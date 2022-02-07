@@ -1371,7 +1371,7 @@ public class MockHttpServletRequest implements HttpServletRequest {
 	}
 
 	public void addPart(Part part) {
-		this.parts.add(part.getName(), part);
+		this.parts.set(part.getName(), part);
 	}
 
 	@Override

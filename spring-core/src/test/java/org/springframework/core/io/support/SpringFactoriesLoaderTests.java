@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,19 @@
 
 package org.springframework.core.io.support;
 
+import java.io.File;
 import java.lang.reflect.Modifier;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.List;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+
+import org.springframework.core.io.support.SpringFactoriesLoader.FactoryArguments;
+import org.springframework.core.io.support.SpringFactoriesLoader.LoggingFactoryInstantiationFailureHandler;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
@@ -32,8 +39,20 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
  * @author Arjen Poutsma
  * @author Phillip Webb
  * @author Sam Brannen
+ * @author Andy Wilkinson
  */
 class SpringFactoriesLoaderTests {
+
+	private static final ClassLoader constructorArgumentFactoriesClassLoader;
+
+	static {
+		try {
+			constructorArgumentFactoriesClassLoader = new URLClassLoader(new URL[] { new File("src/test/resources/org/springframework/core/io/support/constructor-argument-factories/").toURI().toURL()});
+		}
+		catch (MalformedURLException ex) {
+			throw new IllegalStateException(ex);
+		}
+	}
 
 	@BeforeAll
 	static void clearCache() {
@@ -43,7 +62,7 @@ class SpringFactoriesLoaderTests {
 
 	@AfterAll
 	static void checkCache() {
-		assertThat(SpringFactoriesLoader.cache).hasSize(1);
+		assertThat(SpringFactoriesLoader.cache).hasSize(2);
 	}
 
 	@Test
@@ -80,6 +99,41 @@ class SpringFactoriesLoaderTests {
 			.isThrownBy(() -> SpringFactoriesLoader.loadFactories(String.class, null))
 			.withMessageContaining("Unable to instantiate factory class "
 					+ "[org.springframework.core.io.support.MyDummyFactory1] for factory type [java.lang.String]");
+	}
+
+	@Test
+	void attemptToLoadFactoryOfIncompatibleTypeWithLoggingFailureHandler() {
+		List<String> factories = SpringFactoriesLoader.loadFactories(String.class, null, new LoggingFactoryInstantiationFailureHandler());
+		assertThat(factories.isEmpty());
+	}
+
+	@Test
+	void loadFactoryWithNonDefaultConstructor() {
+		FactoryArguments arguments = new FactoryArguments();
+		arguments.set(String.class, "injected");
+		List<DummyFactory> factories = SpringFactoriesLoader.loadFactories(DummyFactory.class, arguments, constructorArgumentFactoriesClassLoader);
+		assertThat(factories).hasSize(3);
+		assertThat(factories.get(0)).isInstanceOf(MyDummyFactory1.class);
+		assertThat(factories.get(1)).isInstanceOf(MyDummyFactory2.class);
+		assertThat(factories.get(2)).isInstanceOf(ConstructorArgsDummyFactory.class);
+		assertThat(factories).extracting(DummyFactory::getString).containsExactly("Foo", "Bar", "injected");
+	}
+
+	@Test
+	void attemptToLoadFactoryWithMissingArgument() {
+		assertThatIllegalArgumentException()
+			.isThrownBy(() -> SpringFactoriesLoader.loadFactories(DummyFactory.class, constructorArgumentFactoriesClassLoader))
+			.withMessageContaining("Unable to instantiate factory class "
+					+ "[org.springframework.core.io.support.ConstructorArgsDummyFactory] for factory type [org.springframework.core.io.support.DummyFactory]")
+			.havingRootCause().withMessageContaining("Class [org.springframework.core.io.support.ConstructorArgsDummyFactory] has no suitable constructor");
+	}
+
+	@Test
+	void loadFactoryWithMissingArgumentUsingLoggingFailureHandler() {
+		List<DummyFactory> factories = SpringFactoriesLoader.loadFactories(DummyFactory.class, constructorArgumentFactoriesClassLoader, new LoggingFactoryInstantiationFailureHandler());
+		assertThat(factories).hasSize(2);
+		assertThat(factories.get(0)).isInstanceOf(MyDummyFactory1.class);
+		assertThat(factories.get(1)).isInstanceOf(MyDummyFactory2.class);
 	}
 
 }

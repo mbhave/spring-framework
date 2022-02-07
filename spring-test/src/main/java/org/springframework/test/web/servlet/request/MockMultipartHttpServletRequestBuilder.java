@@ -110,7 +110,7 @@ public class MockMultipartHttpServletRequestBuilder extends MockHttpServletReque
 	public MockMultipartHttpServletRequestBuilder part(Part... parts) {
 		Assert.notEmpty(parts, "'parts' must not be empty");
 		for (Part part : parts) {
-			this.parts.add(part.getName(), part);
+			this.parts.set(part.getName(), part);
 		}
 		return this;
 	}
