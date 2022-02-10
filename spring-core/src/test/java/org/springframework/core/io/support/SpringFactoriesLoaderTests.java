@@ -45,9 +45,12 @@ class SpringFactoriesLoaderTests {
 
 	private static final ClassLoader constructorArgumentFactoriesClassLoader;
 
+	private static final ClassLoader multipleArgumentFactoriesClassLoader;
+
 	static {
 		try {
-			constructorArgumentFactoriesClassLoader = new URLClassLoader(new URL[] { new File("src/test/resources/org/springframework/core/io/support/constructor-argument-factories/").toURI().toURL()});
+			constructorArgumentFactoriesClassLoader = new URLClassLoader(new URL[] {new File("src/test/resources/org/springframework/core/io/support/constructor-argument-factories/").toURI().toURL()});
+			multipleArgumentFactoriesClassLoader = new URLClassLoader(new URL[] {new File("src/test/resources/org/springframework/core/io/support/multiple-arguments-factories/").toURI().toURL()});
 		}
 		catch (MalformedURLException ex) {
 			throw new IllegalStateException(ex);
@@ -62,7 +65,7 @@ class SpringFactoriesLoaderTests {
 
 	@AfterAll
 	static void checkCache() {
-		assertThat(SpringFactoriesLoader.cache).hasSize(2);
+		assertThat(SpringFactoriesLoader.cache).hasSize(3);
 	}
 
 	@Test
@@ -117,6 +120,17 @@ class SpringFactoriesLoaderTests {
 		assertThat(factories.get(1)).isInstanceOf(MyDummyFactory2.class);
 		assertThat(factories.get(2)).isInstanceOf(ConstructorArgsDummyFactory.class);
 		assertThat(factories).extracting(DummyFactory::getString).containsExactly("Foo", "Bar", "injected");
+	}
+
+	@Test
+	void loadFactoryWithMultipleConstructors() {
+		FactoryArguments arguments = new FactoryArguments();
+		arguments.set(String.class, "injected");
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> SpringFactoriesLoader.loadFactories(DummyFactory.class, arguments, multipleArgumentFactoriesClassLoader))
+				.withMessageContaining("Unable to instantiate factory class "
+						+ "[org.springframework.core.io.support.MultipleConstructorArgsDummyFactory] for factory type [org.springframework.core.io.support.DummyFactory]")
+				.havingRootCause().withMessageContaining("Class [org.springframework.core.io.support.MultipleConstructorArgsDummyFactory] has multiple constructors");
 	}
 
 	@Test

@@ -20,9 +20,7 @@ import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
@@ -72,9 +70,6 @@ public final class SpringFactoriesLoader {
 
 
 	private static final Log logger = LogFactory.getLog(SpringFactoriesLoader.class);
-
-	private static final Comparator<Constructor<?>> CONSTRUCTOR_COMPARATOR = Comparator
-			.<Constructor<?>>comparingInt(Constructor::getParameterCount).reversed();
 
 	static final Map<ClassLoader, Map<String, List<String>>> cache = new ConcurrentReferenceHashMap<>();
 
@@ -264,13 +259,12 @@ public final class SpringFactoriesLoader {
 						"Class [" + factoryImplementationName + "] is not assignable to factory type [" + factoryType.getName() + "]");
 			}
 			Constructor<?>[] constructors = factoryImplementationClass.getDeclaredConstructors();
-			Arrays.sort(constructors, CONSTRUCTOR_COMPARATOR);
-			for (Constructor<?> constructor : constructors) {
-				Object[] args = resolveConstructorArguments(arguments, constructor);
-				if (args != null) {
-					ReflectionUtils.makeAccessible(constructor);
-					return (T) constructor.newInstance(args);
-				}
+			Assert.state(constructors.length == 1, "Class [" + factoryImplementationClass.getName() + "] has multiple constructors");
+			Constructor<?> constructor = constructors[0];
+			Object[] args = resolveConstructorArguments(arguments, constructor);
+			if (args != null) {
+				ReflectionUtils.makeAccessible(constructor);
+				return (T) constructor.newInstance(args);
 			}
 			throw new IllegalArgumentException("Class [" + factoryImplementationClass.getName() + "] has no suitable constructor");
 		}
