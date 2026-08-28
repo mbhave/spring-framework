@@ -44,6 +44,7 @@ public class ConventionsPlugin implements Plugin<Project> {
 		new CheckstyleConventions().apply(project);
 		new JavaConventions().apply(project);
 		new KotlinConventions().apply(project);
+		new ReproducibleBuildConventions().apply(project);
 		new TestConventions().apply(project);
 	}
 
