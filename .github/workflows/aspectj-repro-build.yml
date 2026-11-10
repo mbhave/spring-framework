@@ -1,0 +1,26 @@
+name: AspectJ Reproducibility Build
+
+# Manual only. Builds the jars and attaches them to the run; nothing is published.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    name: Build and Attach Artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Out Code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare Gradle Build
+        uses: ./.github/actions/prepare-gradle-build
+      - name: Build (No Tests)
+        run: ./gradlew assemble
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: jars
+          path: |
+            **/build/libs/*.jar
+          if-no-files-found: error
+          retention-days: 7
